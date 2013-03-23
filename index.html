@@ -1,9 +1,312 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <title>Hello World</title>
-  </head>
-  <body>
-    Test page
-  </body>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+    <title>Cards</title>
+
+    <style type="text/css">
+        /* Removes Firefox imposed outline */
+        a { outline: none; }
+
+        /* Clearing floats without extra markup  */
+        .wrapper {
+            display: inline-block;
+        }
+
+        .wrapper:after {
+            content: ".";
+            display: block;
+            height: 0;
+            clear: both;
+            visibility: hidden;
+        }
+
+        * html .wrapper {
+            height: 1%;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'times new roman', serif;
+            background-color: black;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            user-select: none;
+        }
+
+        #table {
+            display: block;
+            padding: 1.5em 4em 8em 1em;
+            min-height: 8em;
+            background: green url(./i/card-light.png) 0 50% repeat-x;
+        }
+
+        #dealer {
+            padding: .25em 2em;
+            background-color: brown;
+            border-top: 1px solid green;
+        }
+
+        #dealer a {
+            color: white;
+            padding-right: 3em;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        #deck {
+            position: relative;
+            float: left;
+            display: none;
+            width: 7em;
+            height: 7em;
+        }
+
+        .card-wrapper {
+            position: relative;
+            float: left;
+            width: 2.5em;
+            height: 2em;
+        }
+
+        .card {
+            position: absolute;
+            padding: .1em 0 .1em .25em;
+            font-size: 2em;
+            line-height: 1em;
+            font-weight: bold;
+            background-color: white;
+            border: 1px solid #666;
+            border: 1px solid rgba(128,128,128, .5);
+            background: white url(./i/card-light.png) 50% 50%;
+            -moz-border-radius: .25em;
+            -webkit-border-radius: .25em;
+            -moz-box-shadow: 1px 3px 7px #547e54;
+            -moz-box-shadow: 1px 3px 7px rgba(0,0,0, .3);
+            -webkit-box-shadow: 1px 3px 7px #547e54;
+            -webkit-box-shadow: 1px 3px 7px rgba(0,0,0, .3);
+            cursor: pointer;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            user-select: none;
+        }
+
+        .card-wrapper .card:hover {
+            font-size: 2.2em;
+            -webkit-transform: translate(-.2em, -.5em) rotate(2deg);
+            -moz-transform: translate(-.2em, -.4em) rotate(2deg);
+            -moz-box-shadow: 1px 3px 12px #547e54;
+            -moz-box-shadow: 1px 3px 12px rgba(0,0,0, .3);
+            -webkit-box-shadow: 1px 3px 12px #547e54;
+            -webkit-box-shadow: 1px 3px 12px rgba(0,0,0, .3);
+        }
+
+        #deck .card {
+            color: red;
+            background-color: red;
+        }
+
+        #deck .card-top {
+            top: 2px;
+            left: 4px;
+        }
+
+        #deck .card-top:hover {
+            font-size: 2.1em;
+            -webkit-transform: translate(.1em, .1em) rotate(5deg);
+            -moz-transform: translate(.1em, .1em) rotate(5deg);
+        }
+        .red { color: red; }
+
+        .black { color: black; }
+
+        .card span.value {
+            padding-right: 3px;
+            letter-spacing: -2px;
+        }
+
+        .card span.suit { font-size: .75em; }
+
+        .card div.suit {
+            margin-right: .15em;
+            width: 1em;
+            line-height: 1em;
+            font-size: 1.75em;
+            text-align: center;
+        }
+    </style>
+    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.3.2/jquery.min.js"></script>
+    <script type="text/javascript" charset="utf-8">
+        $(function(){
+            jQuery.fn.throttle = function(callback, settings) {
+                settings = jQuery.extend({
+                    per: 50,
+                    pause: 2,
+                    callback: function(){}
+                }, settings);
+
+                var on = 0;
+                var num_items = this.length;
+                var original_this = this;
+                var iter = function () {
+                    var done = 0;
+                    while (done++ < settings.per && on < num_items) {
+                        callback.call(original_this.eq(on));
+                        on++;
+                    }
+
+                    if ( on != num_items ) {
+                        setTimeout(iter, settings.pause);
+                    }
+                    else {
+                        settings.callback.call();
+                    }
+                }
+                iter();
+            };
+            jQuery.fn.reverse = function() {
+              return this.pushStack(this.get().reverse(), arguments);
+            };
+            
+            /*
+             * Deck
+             * version: 1.0 (17-MAY-2009)
+             * @requires jQuery v1.3.2
+             * author: kai bansner
+             *
+             * Deck creats an array of Card objects. The card object contains an index for sorting, 
+             * a suit and a face value. 
+             * 
+             * methods:
+             * show - displays the entire deck (to demonstrate that it's all there)
+             * shuffle - clears the table, randomizes the cards array and places the deck on the table
+             * top_card - displays the card on the end of the cards array until there are none left
+             *
+             */
+            
+            var deck = function(){
+                var cards = [], 
+                suits = ['spades','dimonds','clubs','hearts'],
+                suitInfo = {
+                    spades: {color: 'black', symbol: '&#9824;'},
+                    dimonds: {color: 'red', symbol: '&#9830;'},
+                    clubs: {color: 'black', symbol: '&#9827;'},
+                    hearts: {color: 'red', symbol: '&#9829;'}
+                },
+                faceValue = {
+                     '1': 'A',
+                    '11': 'J',
+                    '12': 'Q',
+                    '13': 'K'
+                };
+
+                var getFace = function(i) {
+                    return faceValue[i] || i
+                };
+                var addSuit = function(suit, offset) {
+                    for( var i = 1; i < 14; i++ ) {
+                        cards.push({'index': i + offset, 'suit': suit, 'value': i});
+                    }
+                };
+                var cardMarkup = function(c) {
+                    return [
+                        '<div class="card-wrapper">',
+                            '<div class="card '+ suitInfo[c.suit].color +'">',
+                                '<span class="value">'+ getFace(c.value) +'</span>',
+                                '<span class="suit">'+ suitInfo[c.suit].symbol +'</span>',
+                                '<div class="suit">'+ suitInfo[c.suit].symbol +'</div>',
+                            '</div>',
+                        '</div>'].join('');
+                };
+                var _shuffle = function() {
+                    $('#table .card-wrapper').remove();
+                    freshCards();
+                    $('#deck, #deck .card')
+                        .show()
+                        .animate({top: 5}, 40)
+                        .animate({top: -5}, 30)
+                        .animate({top: 5}, 30)
+                        .animate({top: -3}, 30)
+                        .animate({top: 0}, 50);
+
+                    $.each(cards, function(i, card) {
+                        card.index = Math.random();
+                    });
+                    cards.sort(function(a, b) {
+                        return a.index < b.index ? -1 : 1;
+                    });
+                };
+
+                var freshCards = function() {
+                    cards = [];
+                    $.each(suits, function(i, suit){ addSuit(suit, i * 13); });
+                };
+                freshCards();
+
+                return {
+                    show: function() {
+                        $.each(cards.reverse(), function() {
+                            $('#table').addClass('small').append(cardMarkup(cards.pop()));
+                        })
+                    },
+                    shuffle: function() {
+                        if ( $('#table .card-wrapper').length < 30 ) {
+                            $('#table .card-wrapper').reverse().throttle(function() {
+                                    $(this).remove();
+                                },
+                                {per: 1, pause: 50, callback: _shuffle}
+                            );
+                        }
+                        else {
+                            _shuffle();
+                        }
+                    },
+                    top_card: function() {
+                        if ( cards.length ) {
+                            $('#table').append(cardMarkup(cards.pop()));
+                            if ( cards.length !== 0 ) $('#deck .card-top').show();
+                            if ( cards.length < 2 ) {
+                                $('#deck .card:visible:last').fadeOut();
+                            }
+                        }
+                        else {
+                            alert('No more cards in the deck. Time to {shuffle} them again.')
+                        }
+                    }
+                };
+            };
+            myDeck = new deck();
+            $('#dealer a:eq(0)').click(myDeck.shuffle);
+            $('#dealer a:eq(1)').click(myDeck.top_card);
+
+            $('#deck .card').click(function() {
+                $(this).fadeOut('fast', function(){ myDeck.top_card(); });
+            });
+            myDeck.show();
+        });
+    </script>
+</head>
+
+<body>
+    <div id="table" class="wrapper">
+        <div id="deck">
+            <div class="card">
+                <span class="value">?</span>
+                <span class="suit">?</span>
+                <div class="suit">?</div>
+            </div>
+            <div class="card card-top">
+                <span class="value">?</span>
+                <span class="suit">?</span>
+                <div class="suit">?</div>
+            </div>
+        </div>
+    </div>
+    <div id="dealer">
+        <a href="javascript:void(0)">{shuffle}</a>
+        <a href="javascript:void(0)">{top card}</a>
+    </div>
+</body>
 </html>
